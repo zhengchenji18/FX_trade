@@ -1,55 +1,55 @@
-from data import get_data
-import pandas as pd
-import logging
+'''
+This is the main entry point to the fx trade program
+It calls functions to
+1.get data
+2.compute trade signal and pnl
+3.visualize using plotly
+'''
+# task:
+#take commandline argument for main
+import argparse
+import config
+from data import pull_data
+from trade import moving_average
+from graph import visualize_pnl
 
-
-LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.INFO)
-# create formatter
-LOG_DATEFMT = '%Y-%m-%d %H:%M:%S'
-LOG_FORMAT = ('\n[%(levelname)s/%(name)s:%(lineno)d] %(asctime)s ' +
-              '(%(processName)s/%(threadName)s)\n> %(message)s')
-FORMATTER = logging.Formatter(LOG_FORMAT, datefmt=LOG_DATEFMT)
-FH = logging.FileHandler('trade.log')  # create file handler
-FH.setLevel(logging.DEBUG)  # set handler level to debug
-FH.setFormatter(FORMATTER)  # add formatter to fh
-LOGGER.addHandler(FH)  # add file handler to logger
-
-src_file_name = 'fx.csv'
-
-
-def pullData(str_start_dt:str,str_end_dt:str):
-    LOGGER.info("Getting data")
-    start_dt = pd.to_datetime(str_start_dt,format='%Y-%m-%d')
-    end_dt = pd.to_datetime(str_end_dt,format='%Y-%m-%d')
-
-    res = []
-    for date in pd.date_range(start_dt,end_dt):
-        LOGGER.info("Getting data for " + str(date))
-        data = get_data(date)       
-        if data != []:
-            for i in data:
-                res.append(i)
-
-    cols = ['Date','Currency','Close']
-    df = pd.DataFrame(res,columns = cols)
-    df['Date'] = pd.to_datetime(df['Date'],format='%Y-%m-%d 00:00:00')
-
-    df_final = df.pivot(index='Date',columns='Currency',values='Close')
-    df_final.to_csv(src_file_name)
 
 def run(str_start_dt:str,str_end_dt:str):
-    pullData(start_dt,end_dt)  
+    '''run the main
+       note that pulling data is taking a long time
+       since the endpoint is build using day by day
+       would have been better to pull all data
+       but just want to keep it the same as what's provided
+       during the interview
+       commented out pull data
+       pulled data already stored as fx.csv
+    '''
+    #pull_data(start_dt,end_dt)
+    moving_average()
+    visualize_pnl()
 
-    df_main = pd.read_csv(src_file_name)
-    print(df.head())
+def init_argparse() -> argparse.ArgumentParser:
+    '''init arguments'''
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s","--start_dt", required=False, \
+                 help="start_dt for pulling data.format:YYYY-MM-DD")
+    parser.add_argument("-e","--end_dt", required=False, \
+                 help="end_dt for pulling data.format:YYYY-MM-DD")
+    return parser
 
 if __name__ == '__main__':
-    LOGGER.info("Start running")
+    config.LOGGER.info("Start running")
 
+    parser = init_argparse()
+    args = parser.parse_args()
+
+    #default dates
     start_dt = '2021-08-02'
-    #start_dt = '2022-07-29'
-    end_dt = '2022-08-01'
-    run(start_dt,end_dt)
+    if args.start_dt:
+        start_dt = args.start_dt
+    end_dt = '2022-08-01'     
+    if args.end_dt:
+        end_dt = args.end_dt
 
-    LOGGER.info("end running")
+    run(start_dt,end_dt)
+    config.LOGGER.info("end running")
